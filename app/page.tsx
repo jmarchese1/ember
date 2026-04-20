@@ -231,8 +231,15 @@ export default function Page() {
           )}
         </main>
 
-        <footer className="pb-8 pt-4 text-center text-[11px] uppercase tracking-[0.25em] text-tertiary safe-bottom">
-          Ember · small fires, long burns
+        <footer className="pb-8 pt-4 text-center text-[11px] text-tertiary safe-bottom">
+          <div className="uppercase tracking-[0.25em]">Ember · small fires, long burns</div>
+          <div className="mt-2 text-[10.5px]">
+            <a href="/legal/terms" className="hover:text-primary">Terms</a>
+            <span className="mx-2">·</span>
+            <a href="/legal/privacy" className="hover:text-primary">Privacy</a>
+            <span className="mx-2">·</span>
+            <a href="mailto:support@ember.app" className="hover:text-primary">support@ember.app</a>
+          </div>
         </footer>
       </div>
 

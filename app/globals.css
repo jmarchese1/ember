@@ -485,3 +485,25 @@ main, nav, header { position: relative; z-index: 1; }
 
 /* Tailwind arbitrary classes sometimes need these explicit */
 .ring-accent { --tw-ring-color: var(--accent); }
+
+/* Legal pages — readable long-form */
+.prose-article .lede {
+  font-size: 16px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+.prose-article ul {
+  list-style: disc;
+  padding-left: 20px;
+  margin: 8px 0;
+}
+.prose-article li { margin-bottom: 4px; }
+.prose-article a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.prose-article a:hover { color: var(--accent-hover); }
+.prose-article code {
+  background: var(--bg-subtle);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12.5px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}

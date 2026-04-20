@@ -251,6 +251,12 @@ export function LoginScreen() {
         <p className="text-[10px] text-tertiary uppercase tracking-[0.25em] text-center mt-8">
           small fires · long burns
         </p>
+
+        <div className="text-center mt-3 text-[11px] text-tertiary">
+          <a href="/legal/terms" className="hover:text-primary">Terms</a>
+          <span className="mx-2">·</span>
+          <a href="/legal/privacy" className="hover:text-primary">Privacy</a>
+        </div>
       </div>
     </div>
   );
