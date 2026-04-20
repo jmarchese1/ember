@@ -12,6 +12,7 @@ import {
   cloudFetchMeditations,
   cloudInsertMeditation,
   cloudUpdateMeditationGuess,
+  cloudUpsertMyPublicProfile,
 } from "./cloud";
 
 let KEY_PREFIX = "habits:";
@@ -135,6 +136,31 @@ export function saveEntry(entry: AnyEntry) {
   addToIndex(entry.date);
   updateStreaks();
   if (_cloudUserId) cloudUpsertEntry(_cloudUserId, entry).catch(() => {});
+  // Keep the public profile's top_themes fresh so friend-matching can find overlap.
+  if (_cloudUserId && entry.kind === "journal") {
+    const themes = computeTopThemes(8);
+    cloudUpsertMyPublicProfile(_cloudUserId, { top_themes: themes }).catch(() => {});
+  }
+}
+
+/**
+ * Compute the user's most-used journal themes, for community matching.
+ */
+export function computeTopThemes(limit = 8): string[] {
+  const logs = getAllLogs();
+  const counts = new Map<string, number>();
+  for (const l of logs) {
+    const themes = l.journal?.themes ?? [];
+    for (const t of themes) {
+      const k = t.trim().toLowerCase();
+      if (!k) continue;
+      counts.set(k, (counts.get(k) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([t]) => t);
 }
 
 export function deleteEntry(date: string, kind: "workout" | "journal" | "diet") {

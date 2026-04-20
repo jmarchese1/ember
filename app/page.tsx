@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { Home, Dumbbell, BookOpen, Salad, LayoutDashboard, Brain } from "lucide-react";
+import { Home, Dumbbell, BookOpen, Salad, LayoutDashboard, Brain, Users } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { LogTab } from "@/components/log-tab";
 import { TrainingTab } from "@/components/training-tab";
@@ -9,6 +9,7 @@ import { DietTab } from "@/components/diet-tab";
 import { JournalTab } from "@/components/journal-tab";
 import { DashboardTab } from "@/components/dashboard-tab";
 import { MeditationTab } from "@/components/meditation-tab";
+import { CommunityTab } from "@/components/community-tab";
 import { Onboarding } from "@/components/onboarding";
 import { Breathing } from "@/components/breathing";
 import { LoginScreen } from "@/components/login";
@@ -30,7 +31,7 @@ import {
 import type { Settings, Streaks } from "@/lib/types";
 import { classNames } from "@/lib/utils";
 
-type Tab = "log" | "training" | "diet" | "journal" | "meditation" | "dashboard";
+type Tab = "log" | "training" | "diet" | "journal" | "meditation" | "community" | "dashboard";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "log", label: "Home", icon: <Home size={15} /> },
@@ -38,6 +39,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "diet", label: "Diet", icon: <Salad size={15} /> },
   { id: "journal", label: "Journal", icon: <BookOpen size={15} /> },
   { id: "meditation", label: "Meditation", icon: <Brain size={15} /> },
+  { id: "community", label: "Community", icon: <Users size={15} /> },
   { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={15} /> },
 ];
 
@@ -217,6 +219,7 @@ export default function Page() {
               onUpgrade={() => setUpgradeOpen(true)}
             />
           )}
+          {tab === "community" && <CommunityTab refreshKey={refreshKey} />}
           {tab === "dashboard" && (
             <DashboardTab
               settings={settings}

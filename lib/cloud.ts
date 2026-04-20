@@ -120,6 +120,119 @@ export async function cloudUpdateMeditationGuess(
   if (error) console.error("[cloud] update meditation guess failed", error.message);
 }
 
+/* ===== Community: public profiles + friendships ===== */
+
+export interface PublicProfile {
+  user_id: string;
+  display_name: string | null;
+  bio: string | null;
+  top_themes: string[];
+  discoverable: boolean;
+  updated_at: string;
+}
+
+export interface Friendship {
+  requester: string;
+  recipient: string;
+  status: "pending" | "accepted" | "declined";
+  created_at: string;
+}
+
+export async function cloudGetMyPublicProfile(userId: string): Promise<PublicProfile | null> {
+  const { data, error } = await supabase()
+    .from("public_profiles")
+    .select("user_id, display_name, bio, top_themes, discoverable, updated_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) {
+    console.error("[cloud] get my public profile failed", error.message);
+    return null;
+  }
+  return (data as PublicProfile) || null;
+}
+
+export async function cloudUpsertMyPublicProfile(
+  userId: string,
+  patch: Partial<PublicProfile>
+): Promise<void> {
+  const { error } = await supabase()
+    .from("public_profiles")
+    .upsert({ user_id: userId, ...patch }, { onConflict: "user_id" });
+  if (error) console.error("[cloud] upsert public profile failed", error.message);
+}
+
+export async function cloudFetchDiscoverable(
+  excludeUserId: string
+): Promise<PublicProfile[]> {
+  const { data, error } = await supabase()
+    .from("public_profiles")
+    .select("user_id, display_name, bio, top_themes, discoverable, updated_at")
+    .eq("discoverable", true)
+    .neq("user_id", excludeUserId)
+    .limit(100);
+  if (error) {
+    console.error("[cloud] fetch discoverable failed", error.message);
+    return [];
+  }
+  return (data as PublicProfile[]) ?? [];
+}
+
+export async function cloudFetchFriendships(userId: string): Promise<Friendship[]> {
+  const { data, error } = await supabase()
+    .from("friendships")
+    .select("requester, recipient, status, created_at")
+    .or(`requester.eq.${userId},recipient.eq.${userId}`);
+  if (error) {
+    console.error("[cloud] fetch friendships failed", error.message);
+    return [];
+  }
+  return (data as Friendship[]) ?? [];
+}
+
+export async function cloudRequestFriend(
+  userId: string,
+  otherId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase()
+    .from("friendships")
+    .insert({ requester: userId, recipient: otherId, status: "pending" });
+  if (error) {
+    console.error("[cloud] request friend failed", error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+export async function cloudRespondToFriend(
+  myUserId: string,
+  requesterId: string,
+  accept: boolean
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase()
+    .from("friendships")
+    .update({ status: accept ? "accepted" : "declined" })
+    .eq("requester", requesterId)
+    .eq("recipient", myUserId);
+  if (error) {
+    console.error("[cloud] respond friend failed", error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+export async function cloudRemoveFriendship(
+  userId: string,
+  otherId: string
+): Promise<void> {
+  // Delete both directions in case row exists either way
+  await supabase()
+    .from("friendships")
+    .delete()
+    .or(
+      `and(requester.eq.${userId},recipient.eq.${otherId}),and(requester.eq.${otherId},recipient.eq.${userId})`
+    );
+}
+
 export async function cloudFetchMeditations(
   userId: string
 ): Promise<MeditationSession[]> {
