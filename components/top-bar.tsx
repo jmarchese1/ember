@@ -1,5 +1,5 @@
 "use client";
-import { Flame, Moon, Sun, Wind } from "lucide-react";
+import { Flame, Moon, Sun, Wind, Sparkles } from "lucide-react";
 import { StreakFlame } from "./streak-flame";
 import type { Settings, Streaks } from "@/lib/types";
 
@@ -10,7 +10,9 @@ export function TopBar({
   onOpenBreathing,
   onOpenAccount,
   onOpenStreak,
+  onOpenUpgrade,
   email,
+  tier,
 }: {
   settings: Settings;
   streaks: Streaks;
@@ -18,7 +20,9 @@ export function TopBar({
   onOpenBreathing: () => void;
   onOpenAccount?: () => void;
   onOpenStreak?: () => void;
+  onOpenUpgrade?: () => void;
   email?: string;
+  tier?: "free" | "pro";
 }) {
   const longest = Math.max(streaks.workout.current, streaks.journal.current, streaks.diet.current);
   const active = longest > 0;
@@ -47,6 +51,37 @@ export function TopBar({
         </div>
 
         <div className="flex items-center gap-2 md:gap-3">
+          {tier === "pro" ? (
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-widest font-semibold"
+              style={{
+                background:
+                  "linear-gradient(135deg, var(--accent), var(--accent-hover))",
+                color: "#fff",
+                boxShadow: "0 4px 12px -4px var(--accent-glow)",
+              }}
+              title="Ember Pro"
+            >
+              <Sparkles size={11} />
+              Pro
+            </span>
+          ) : onOpenUpgrade ? (
+            <button
+              onClick={onOpenUpgrade}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold transition-all hover:brightness-110 hover:-translate-y-px"
+              style={{
+                background:
+                  "linear-gradient(135deg, var(--accent), var(--accent-hover))",
+                color: "#fff",
+                boxShadow: "0 6px 18px -6px var(--accent-glow)",
+              }}
+              title="Upgrade to Ember Pro"
+            >
+              <Sparkles size={13} />
+              <span>Upgrade</span>
+            </button>
+          ) : null}
+
           <button
             onClick={onOpenStreak}
             disabled={!onOpenStreak}

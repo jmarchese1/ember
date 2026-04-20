@@ -15,6 +15,7 @@ import { LoginScreen } from "@/components/login";
 import { DataControls } from "@/components/data-controls";
 import { StreakCalendar } from "@/components/streak-calendar";
 import { InstallHint } from "@/components/install-hint";
+import { UpgradeModal } from "@/components/upgrade-modal";
 import { ToastViewport } from "@/components/ui/toast";
 import { supabase } from "@/lib/supabase-client";
 import {
@@ -56,6 +57,8 @@ export default function Page() {
   const [breathing, setBreathing] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [streakOpen, setStreakOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [tier, setTier] = useState<"free" | "pro">("free");
 
   useEffect(() => {
     setMounted(true);
@@ -106,8 +109,18 @@ export default function Page() {
     (async () => {
       if (session?.user?.id) {
         await hydrateFromCloud(session.user.id);
+        // Fetch Pro tier status
+        try {
+          const { data: prof } = await supabase()
+            .from("profiles")
+            .select("subscription_tier")
+            .eq("id", session.user.id)
+            .maybeSingle();
+          setTier(((prof?.subscription_tier as "free" | "pro") || "free") as "free" | "pro");
+        } catch {}
       } else {
         setCloudUser(null);
+        setTier("free");
       }
       const s = getSettings();
       setSettingsState(s);
@@ -166,7 +179,9 @@ export default function Page() {
         onOpenBreathing={() => setBreathing(true)}
         onOpenAccount={() => setAccountOpen(true)}
         onOpenStreak={() => setStreakOpen(true)}
+        onOpenUpgrade={() => setUpgradeOpen(true)}
         email={session.user.email ?? undefined}
+        tier={tier}
       />
 
       <div className="max-w-6xl mx-auto px-4 md:px-6">
@@ -195,9 +210,21 @@ export default function Page() {
           {tab === "training" && <TrainingTab streaks={streaks} refreshKey={refreshKey} />}
           {tab === "diet" && <DietTab streaks={streaks} refreshKey={refreshKey} />}
           {tab === "journal" && <JournalTab streaks={streaks} refreshKey={refreshKey} />}
-          {tab === "meditation" && <MeditationTab refreshKey={refreshKey} />}
+          {tab === "meditation" && (
+            <MeditationTab
+              refreshKey={refreshKey}
+              tier={tier}
+              onUpgrade={() => setUpgradeOpen(true)}
+            />
+          )}
           {tab === "dashboard" && (
-            <DashboardTab settings={settings} streaks={streaks} refreshKey={refreshKey} />
+            <DashboardTab
+              settings={settings}
+              streaks={streaks}
+              refreshKey={refreshKey}
+              tier={tier}
+              onUpgrade={() => setUpgradeOpen(true)}
+            />
           )}
         </main>
 
@@ -223,6 +250,8 @@ export default function Page() {
           onClose={() => setStreakOpen(false)}
         />
       )}
+
+      {upgradeOpen && <UpgradeModal onClose={() => setUpgradeOpen(false)} />}
 
       {accountOpen && (
         <DataControls

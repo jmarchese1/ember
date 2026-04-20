@@ -61,7 +61,10 @@ export async function POST(req: Request) {
       success_url: `${origin}/?upgrade=success`,
       cancel_url: `${origin}/?upgrade=cancel`,
       allow_promotion_codes: true,
-      subscription_data: { metadata: { supabase_user_id: user.id } },
+      subscription_data: {
+        trial_period_days: 7,
+        metadata: { supabase_user_id: user.id },
+      },
       client_reference_id: user.id,
     });
 

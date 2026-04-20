@@ -34,7 +34,17 @@ import { EmptyState } from "./empty-state";
 
 type Phase = "idle" | "running" | "guessing" | "revealed";
 
-export function MeditationTab({ refreshKey }: { refreshKey: number }) {
+const FREE_SOUNDS: MeditationSound[] = ["silent", "pink"];
+
+export function MeditationTab({
+  refreshKey,
+  tier = "free",
+  onUpgrade,
+}: {
+  refreshKey: number;
+  tier?: "free" | "pro";
+  onUpgrade?: () => void;
+}) {
   const [sessions, setSessions] = useState<MeditationSession[]>(() =>
     getAllMeditations()
   );
@@ -185,6 +195,8 @@ export function MeditationTab({ refreshKey }: { refreshKey: number }) {
           volume={volume}
           setVolume={setVolume}
           onStart={start}
+          tier={tier}
+          onUpgrade={onUpgrade}
         />
       )}
 
@@ -228,6 +240,8 @@ function SetupCard({
   volume,
   setVolume,
   onStart,
+  tier,
+  onUpgrade,
 }: {
   minMin: number;
   maxMin: number;
@@ -238,6 +252,8 @@ function SetupCard({
   volume: number;
   setVolume: (v: number) => void;
   onStart: () => void;
+  tier: "free" | "pro";
+  onUpgrade?: () => void;
 }) {
   const [soundOpen, setSoundOpen] = useState(false);
   const [preview, setPreview] = useState<AmbientPlayer | null>(null);
@@ -319,26 +335,44 @@ function SetupCard({
               {(Object.keys(SOUND_META) as MeditationSound[]).map((s) => {
                 const m = SOUND_META[s];
                 const active = s === sound;
+                const locked = tier === "free" && !FREE_SOUNDS.includes(s);
                 return (
                   <button
                     key={s}
                     onMouseDown={(e) => {
                       e.preventDefault();
+                      if (locked) {
+                        setSoundOpen(false);
+                        onUpgrade?.();
+                        return;
+                      }
                       previewSound(s);
                       setSoundOpen(false);
                     }}
                     className="w-full text-left px-3 py-2 rounded-lg hover:opacity-90 flex items-start justify-between gap-3"
                     style={{
                       background: active ? "var(--accent-soft)" : "transparent",
+                      opacity: locked ? 0.65 : 1,
                     }}
                   >
                     <div className="min-w-0">
                       <div
-                        className={`text-[13px] font-medium ${
+                        className={`text-[13px] font-medium flex items-center gap-1.5 ${
                           active ? "text-accent" : "text-primary"
                         }`}
                       >
                         {m.label}
+                        {locked && (
+                          <span
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] uppercase tracking-widest font-semibold"
+                            style={{
+                              background: "var(--accent-soft)",
+                              color: "var(--accent-hover)",
+                            }}
+                          >
+                            Pro
+                          </span>
+                        )}
                       </div>
                       <div className="text-[11px] text-tertiary">{m.desc}</div>
                     </div>

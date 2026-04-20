@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { Dumbbell, BookOpen, Salad, Sparkles, Copy, RefreshCw, Flame, Check } from "lucide-react";
+import { Dumbbell, BookOpen, Salad, Sparkles, Copy, RefreshCw, Flame, Check, Lock } from "lucide-react";
 import { getAllLogs } from "@/lib/storage";
 import { lastNDays, todayISO, formatDate } from "@/lib/utils";
 import { getDailyQuote } from "@/lib/quotes";
@@ -17,10 +17,14 @@ export function DashboardTab({
   settings,
   streaks,
   refreshKey,
+  tier = "free",
+  onUpgrade,
 }: {
   settings: Settings;
   streaks: Streaks;
   refreshKey: number;
+  tier?: "free" | "pro";
+  onUpgrade?: () => void;
 }) {
   const logs = useMemo<DayLog[]>(() => getAllLogs(), [refreshKey]);
   const [summary, setSummary] = useState("");
@@ -155,32 +159,62 @@ export function DashboardTab({
         </div>
       </div>
 
-      {/* Weekly summary */}
-      <Card>
-        <CardHeader
-          title="Weekly reflection"
-          subtitle="AI-generated from this week's logs across every domain"
-          right={
-            <div className="flex items-center gap-2">
-              {summary && (
-                <Button variant="ghost" onClick={copySummary} icon={copied ? <Check size={14} /> : <Copy size={14} />}>
-                  {copied ? "Copied" : "Copy"}
+      {/* Weekly summary — Pro-only */}
+      {tier === "pro" ? (
+        <Card>
+          <CardHeader
+            title="Weekly reflection"
+            subtitle="AI-generated from this week's logs across every domain"
+            right={
+              <div className="flex items-center gap-2">
+                {summary && (
+                  <Button variant="ghost" onClick={copySummary} icon={copied ? <Check size={14} /> : <Copy size={14} />}>
+                    {copied ? "Copied" : "Copy"}
+                  </Button>
+                )}
+                <Button variant="soft" onClick={generateSummary} disabled={loading} icon={<RefreshCw size={14} className={loading ? "animate-spin" : ""} />}>
+                  {loading ? "Reflecting…" : summary ? "Regenerate" : "Generate"}
                 </Button>
-              )}
-              <Button variant="soft" onClick={generateSummary} disabled={loading} icon={<RefreshCw size={14} className={loading ? "animate-spin" : ""} />}>
-                {loading ? "Reflecting…" : summary ? "Regenerate" : "Generate"}
-              </Button>
+              </div>
+            }
+          />
+          {summary ? (
+            <div className="text-sm text-secondary leading-relaxed whitespace-pre-line max-w-3xl">{summary}</div>
+          ) : (
+            <p className="text-sm text-tertiary">
+              Generate a thoughtful summary of your week. Takes a moment.
+            </p>
+          )}
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader
+            title="Weekly reflection"
+            subtitle="Claude reads your training + journal + diet together and finds patterns"
+            right={
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] uppercase tracking-widest font-semibold" style={{ background: "var(--accent-soft)", color: "var(--accent-hover)" }}>
+                <Lock size={10} />
+                Pro
+              </span>
+            }
+          />
+          <div className="relative overflow-hidden rounded-xl" style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-soft)" }}>
+            <div className="p-5 blur-[2.5px] select-none pointer-events-none text-sm text-secondary leading-relaxed max-w-3xl italic opacity-60">
+              "This week you leaned into consistency — four workouts, six journal entries, and a mood average drifting toward <span className="text-primary">bright</span>. Heavy push days on Tuesday and Friday correlated with a small dip in sleep-quality notes the following morning…"
             </div>
-          }
-        />
-        {summary ? (
-          <div className="text-sm text-secondary leading-relaxed whitespace-pre-line max-w-3xl">{summary}</div>
-        ) : (
-          <p className="text-sm text-tertiary">
-            Generate a thoughtful summary of your week. Takes a moment.
-          </p>
-        )}
-      </Card>
+            <div className="absolute inset-0 grid place-items-center">
+              <div className="text-center">
+                <Button onClick={onUpgrade} icon={<Sparkles size={14} />}>
+                  Unlock with Pro — 7 days free
+                </Button>
+                <div className="text-[11px] text-tertiary mt-2">
+                  Start free, cancel anytime. $6.99/mo after.
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Quote widget */}
       <div className="grid md:grid-cols-[1fr_1fr] gap-4">
