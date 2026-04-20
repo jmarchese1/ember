@@ -38,7 +38,13 @@ export async function POST(req: Request) {
         typeof sub.customer === "string" ? sub.customer : sub.customer.id;
       const tier =
         sub.status === "active" || sub.status === "trialing" ? "pro" : "free";
-      const periodEnd = new Date(sub.current_period_end * 1000).toISOString();
+      // Stripe v22 moved current_period_end onto items; take the latest across items.
+      const ends = (sub.items?.data ?? [])
+        .map((i) => i.current_period_end)
+        .filter((n): n is number => typeof n === "number");
+      const periodEnd = ends.length
+        ? new Date(Math.max(...ends) * 1000).toISOString()
+        : null;
 
       const { error } = await sb
         .from("profiles")

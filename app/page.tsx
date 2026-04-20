@@ -84,15 +84,17 @@ export default function Page() {
       }
     } catch {}
 
-    client.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    client.auth.getSession().then((r: { data: { session: Session | null } }) => {
+      setSession(r.data.session);
       setSessionChecked(true);
     });
 
-    const { data: sub } = client.auth.onAuthStateChange((_evt, sess) => {
-      setSession(sess);
-      setSessionChecked(true);
-    });
+    const { data: sub } = client.auth.onAuthStateChange(
+      (_evt: string, sess: Session | null) => {
+        setSession(sess);
+        setSessionChecked(true);
+      }
+    );
 
     return () => sub.subscription.unsubscribe();
   }, []);

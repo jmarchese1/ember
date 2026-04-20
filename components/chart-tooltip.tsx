@@ -1,13 +1,31 @@
 "use client";
-import type { TooltipProps } from "recharts";
 
+interface SoftTooltipProps {
+  active?: boolean;
+  // Recharts' internal Payload type is heavily generic; widen so the `<Tooltip
+  // content={...}>` spread assigns cleanly without TS friction.
+  payload?: Array<{
+    value?: unknown;
+    name?: unknown;
+    color?: string;
+  }>;
+  label?: unknown;
+  unit?: string;
+  labelKey?: string;
+}
+
+/**
+ * Recharts passes tooltip content components a loosely-typed props object.
+ * We accept the essentials and leave the rest loose so it slots into
+ * `<Tooltip content={(props) => <SoftTooltip {...props} />} />` cleanly.
+ */
 export function SoftTooltip({
   active,
   payload,
   label,
   unit = "",
   labelKey,
-}: TooltipProps<number, string> & { unit?: string; labelKey?: string }) {
+}: SoftTooltipProps) {
   if (!active || !payload || !payload.length) return null;
   return (
     <div
@@ -20,7 +38,7 @@ export function SoftTooltip({
       }}
     >
       <div className="text-[10px] uppercase tracking-widest text-tertiary mb-1">
-        {labelKey ?? label}
+        {labelKey ?? (typeof label === "string" || typeof label === "number" ? String(label) : "")}
       </div>
       {payload.map((p, i) => {
         const v = p.value;
@@ -29,12 +47,12 @@ export function SoftTooltip({
             <span className="flex items-center gap-1.5 text-secondary capitalize">
               <span
                 className="inline-block w-2 h-2 rounded-full"
-                style={{ background: p.color as string }}
+                style={{ background: p.color || "var(--accent)" }}
               />
-              {p.name}
+              {String(p.name ?? "")}
             </span>
             <span className="numeric text-primary" style={{ fontSize: 13 }}>
-              {v}
+              {String(v ?? "")}
               {unit}
             </span>
           </div>
@@ -43,3 +61,4 @@ export function SoftTooltip({
     </div>
   );
 }
+
