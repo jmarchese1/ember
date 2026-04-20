@@ -207,6 +207,7 @@ export default function Page() {
               streaks={streaks}
               onLogged={handleLogged}
               refreshKey={refreshKey}
+              onUpgrade={() => setUpgradeOpen(true)}
             />
           )}
           {tab === "training" && <TrainingTab streaks={streaks} refreshKey={refreshKey} />}

@@ -8,6 +8,7 @@ import { toast } from "./ui/toast";
 import { saveEntry, getDayLog, markQuoteSeen } from "@/lib/storage";
 import { todayISO, formatDate } from "@/lib/utils";
 import { getDailyQuote, getRandomQuote } from "@/lib/quotes";
+import { supabase } from "@/lib/supabase-client";
 import type { Settings, Streaks, AnyEntry, WorkoutEntry, JournalEntry, DietEntry } from "@/lib/types";
 import { StreakFlame } from "./streak-flame";
 import { WeekRibbon } from "./week-ribbon";
@@ -18,11 +19,13 @@ export function LogTab({
   streaks,
   onLogged,
   refreshKey,
+  onUpgrade,
 }: {
   settings: Settings;
   streaks: Streaks;
   onLogged: () => void;
   refreshKey: number;
+  onUpgrade?: () => void;
 }) {
   const date = todayISO();
   const [workout, setWorkout] = useState("");
@@ -51,12 +54,26 @@ export function LogTab({
     }
     setLoading(true);
     try {
+      const { data: sess } = await supabase().auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) {
+        toast("Session expired — sign in again.");
+        return;
+      }
       const res = await fetch("/api/process", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ inputs, date, name: settings.name }),
       });
       const data = await res.json();
+      if (res.status === 402 && data?.reason === "free_limit") {
+        toast(data.message || "Daily free limit reached.", "Upgrade");
+        onUpgrade?.();
+        return;
+      }
       if (data.entries) {
         // Open review modal instead of saving immediately
         setPreview({

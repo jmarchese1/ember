@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
+import { authedUser, getUserTier } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,6 +10,23 @@ const MODEL = "claude-sonnet-4-20250514";
 
 export async function POST(req: Request) {
   try {
+    const user = await authedUser(req);
+    if (!user) {
+      return NextResponse.json({ error: "sign in required" }, { status: 401 });
+    }
+
+    const tier = await getUserTier(user.id);
+    if (tier !== "pro") {
+      return NextResponse.json(
+        {
+          error: "pro required",
+          reason: "pro_only",
+          message: "Weekly reflections are a Pro feature. Start your 7-day free trial to unlock.",
+        },
+        { status: 402 }
+      );
+    }
+
     const body = await req.json();
     const logs = body.logs;
     const name = body.name as string | undefined;

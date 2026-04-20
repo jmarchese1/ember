@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { Dumbbell, BookOpen, Salad, Sparkles, Copy, RefreshCw, Flame, Check, Lock } from "lucide-react";
 import { getAllLogs } from "@/lib/storage";
+import { supabase } from "@/lib/supabase-client";
 import { lastNDays, todayISO, formatDate } from "@/lib/utils";
 import { getDailyQuote } from "@/lib/quotes";
 import type { Settings, Streaks, DayLog } from "@/lib/types";
@@ -48,12 +49,26 @@ export function DashboardTab({
     }
     setLoading(true);
     try {
+      const { data: sess } = await supabase().auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) {
+        toast("Session expired — sign in again.");
+        return;
+      }
       const res = await fetch("/api/summary", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ logs: weekLogs, name: settings.name }),
       });
       const data = await res.json();
+      if (res.status === 402) {
+        toast(data.message || "Upgrade to Pro to unlock this.", "Upgrade");
+        onUpgrade?.();
+        return;
+      }
       if (data.summary) setSummary(data.summary);
       else toast(data.error || "Couldn't generate summary.");
     } catch {

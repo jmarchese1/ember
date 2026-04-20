@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { todayISO, moodScore, estimateVolume, dietScore } from "@/lib/utils";
 import { canonicalizeExerciseName } from "@/lib/exercise-names";
+import { authedUser, getUserTier, consumeFreeAiBudget } from "@/lib/supabase-server";
 import type { Kind } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -316,6 +317,11 @@ Write ONE short sentence of genuine encouragement based on what the user logged 
 
 export async function POST(req: Request) {
   try {
+    const user = await authedUser(req);
+    if (!user) {
+      return NextResponse.json({ error: "sign in required" }, { status: 401 });
+    }
+
     const body = await req.json();
     const inputs = body.inputs as { kind: Kind; text: string }[];
     const date = (body.date as string) || todayISO();
@@ -323,6 +329,23 @@ export async function POST(req: Request) {
 
     if (!Array.isArray(inputs) || inputs.length === 0) {
       return NextResponse.json({ error: "no inputs" }, { status: 400 });
+    }
+
+    // Free-tier rate limit: 3 AI parses per day. Pro is unlimited.
+    const tier = await getUserTier(user.id);
+    if (tier !== "pro") {
+      const budget = await consumeFreeAiBudget(user.id);
+      if (!budget.ok) {
+        return NextResponse.json(
+          {
+            error: "daily limit reached",
+            reason: "free_limit",
+            message: `You've used your ${budget.limit} free AI parses today. Upgrade to Pro for unlimited.`,
+            limit: budget.limit,
+          },
+          { status: 402 }
+        );
+      }
     }
 
     const results: Record<string, unknown> = {};

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Sign in to Ember</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: #faf7f2;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: #1c1917;
+        -webkit-font-smoothing: antialiased;
+      }
+      a { color: #d97706; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf7f2;padding:40px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
+
+            <!-- Logo -->
+            <tr>
+              <td align="center" style="padding-bottom:28px;">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="background:linear-gradient(135deg,#f59e0b 0%,#d97706 55%,#b45309 100%);border-radius:14px;width:52px;height:52px;text-align:center;vertical-align:middle;">
+                      <img src="https://emberbook.app/icon.svg" width="30" height="30" alt="Ember" style="display:inline-block;vertical-align:middle;" />
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Headline -->
+            <tr>
+              <td align="center" style="padding-bottom:8px;">
+                <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-weight:500;font-size:28px;line-height:1.2;color:#1c1917;letter-spacing:-0.01em;">
+                  Sign in to Ember
+                </h1>
+              </td>
+            </tr>
+
+            <!-- Subheadline -->
+            <tr>
+              <td align="center" style="padding-bottom:32px;">
+                <p style="margin:0;font-size:15px;line-height:1.55;color:#57534e;">
+                  Welcome back. Tap the button to open Ember, or paste the six-digit code below if you're signing in on a different device.
+                </p>
+              </td>
+            </tr>
+
+            <!-- CTA -->
+            <tr>
+              <td align="center" style="padding-bottom:20px;">
+                <a href="{{ .ConfirmationURL }}"
+                   style="display:inline-block;padding:14px 28px;background:linear-gradient(135deg,#d97706,#b45309);color:#ffffff;border-radius:12px;font-weight:600;font-size:15px;letter-spacing:0.01em;box-shadow:0 8px 20px -6px rgba(217,119,6,0.4);">
+                  Open Ember
+                </a>
+              </td>
+            </tr>
+
+            <!-- Fallback URL -->
+            <tr>
+              <td align="center" style="padding-bottom:36px;">
+                <p style="margin:0;font-size:12px;color:#a8a29e;line-height:1.5;">
+                  Or copy this link:<br />
+                  <span style="color:#57534e;word-break:break-all;">{{ .ConfirmationURL }}</span>
+                </p>
+              </td>
+            </tr>
+
+            <!-- OTP box -->
+            <tr>
+              <td align="center" style="padding-bottom:8px;">
+                <div style="background:#ffffff;border:1px solid #e7e2d8;border-radius:18px;padding:22px 28px;">
+                  <div style="font-size:10px;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;color:#a8a29e;margin-bottom:8px;">
+                    Or enter this code
+                  </div>
+                  <div style="font-family:'SF Mono',Menlo,Consolas,monospace;font-size:32px;font-weight:600;letter-spacing:0.2em;color:#1c1917;">
+                    {{ .Token }}
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Expiry note -->
+            <tr>
+              <td align="center" style="padding:16px 0 40px;">
+                <p style="margin:0;font-size:12px;color:#a8a29e;">
+                  This link and code expire in an hour. If you didn't request this, you can ignore the email — no action will be taken.
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td align="center" style="border-top:1px solid #e7e2d8;padding-top:22px;">
+                <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;color:#a8a29e;">
+                  Ember · small fires, long burns
+                </p>
+                <p style="margin:0;font-size:11px;color:#a8a29e;">
+                  <a href="https://emberbook.app" style="color:#a8a29e;text-decoration:underline;">emberbook.app</a>
+                  &nbsp;·&nbsp;
+                  <a href="https://emberbook.app/legal/privacy" style="color:#a8a29e;text-decoration:underline;">Privacy</a>
+                  &nbsp;·&nbsp;
+                  <a href="https://emberbook.app/legal/terms" style="color:#a8a29e;text-decoration:underline;">Terms</a>
+                </p>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
