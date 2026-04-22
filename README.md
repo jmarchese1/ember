@@ -59,30 +59,23 @@ Opt-in "discoverable" mode surfaces kindred spirits by **theme overlap** — the
 
 ---
 
-## Screenshots
+## The stack, visually
 
-<table>
-  <tr>
-    <td align="center">
-      <img src="docs/screenshots/home.png" alt="Home — daily log" width="100%"/>
-      <sub><b>Home</b> · three text boxes, one tap to parse</sub>
-    </td>
-    <td align="center">
-      <img src="docs/screenshots/dashboard.png" alt="Dashboard — weekly reflection" width="100%"/>
-      <sub><b>Dashboard</b> · weekly rings, streaks, AI reflection</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="docs/screenshots/meditation.png" alt="Meditation — hidden-duration timer" width="100%"/>
-      <sub><b>Meditation</b> · hidden-duration sit + guess</sub>
-    </td>
-    <td align="center">
-      <img src="docs/screenshots/community.png" alt="Community — theme-based discovery" width="100%"/>
-      <sub><b>Community</b> · kindred spirits by theme</sub>
-    </td>
-  </tr>
-</table>
+<div align="center">
+
+![The stack](docs/screenshots/stack-intro.png)
+
+*Ten tools, four categories. Everything talks to everything else.*
+
+<br/>
+
+![Foundations](docs/screenshots/stack-foundations.png)
+
+*The three things everything plugs into: Supabase, Claude, Claude for UI.*
+
+</div>
+
+> More product screenshots (home, dashboard, meditation, community) will land in [`docs/screenshots/`](docs/screenshots/) — capture recipe in the [folder README](docs/screenshots/README.md).
 
 ---
 
