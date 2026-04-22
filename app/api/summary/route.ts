@@ -35,33 +35,72 @@ export async function POST(req: Request) {
       return NextResponse.json({
         summary:
           "This week you showed up. Consistency is quiet work — the kind that compounds.",
+        sections: {
+          opening: "This week you showed up.",
+          patterns: "Consistency is quiet work.",
+          wins: "You kept the flame lit.",
+          closing: "Keep it small. Keep it steady.",
+        },
       });
     }
 
     const msg = await client.messages.create({
       model: MODEL,
-      max_tokens: 500,
+      max_tokens: 700,
       system: `You are a calm, warm, thoughtful wellness companion writing a weekly reflection.
-Write 3-5 short paragraphs (2-3 sentences each) summarizing the user's week across training, journaling, and diet.
-- Second person, warm, grounded. No hype. No exclamation marks. No emojis.
-- Be specific: reference actual exercises, meals, moods, themes from the data.
-- Gentle observations over advice. End on one forward-looking line.
-- Plain prose, no markdown headers.`,
+Return ONLY a JSON object with four fields. No markdown, no commentary, no code fences — pure JSON.
+
+{
+  "opening": "One sentence (10-20 words). A warm, grounded hook that captures the shape of the week.",
+  "patterns": "Two sentences (30-50 words total). Specific observations from the data — actual exercises, moods, meals, themes. No advice yet.",
+  "wins": "Two sentences (25-40 words total). What to quietly celebrate — the show-ups, the hard days met, the small acts of care. Never hype.",
+  "closing": "One sentence (10-18 words). Forward-looking, gentle. Not a plan, a permission."
+}
+
+Tone: second-person, warm, grounded. No exclamation marks. No emojis. No metaphors about fire or flames (already overused). Specific > generic.`,
       messages: [
         {
           role: "user",
-          content: `User: ${name || "friend"}\n\nThis week's logs:\n${JSON.stringify(logs, null, 2)}`,
+          content: `User: ${name || "friend"}\n\nThis week's logs (JSON):\n${JSON.stringify(logs, null, 2)}`,
         },
       ],
     });
 
-    const summary = msg.content
+    const raw = msg.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("\n")
       .trim();
 
-    return NextResponse.json({ summary });
+    // Strip any stray code fences the model occasionally leaves in.
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+
+    type Sections = {
+      opening: string;
+      patterns: string;
+      wins: string;
+      closing: string;
+    };
+
+    let sections: Sections | null = null;
+    try {
+      const parsed = JSON.parse(cleaned) as Partial<Sections>;
+      if (parsed.opening && parsed.patterns && parsed.wins && parsed.closing) {
+        sections = {
+          opening: String(parsed.opening),
+          patterns: String(parsed.patterns),
+          wins: String(parsed.wins),
+          closing: String(parsed.closing),
+        };
+      }
+    } catch {}
+
+    // Backwards-compatible plain-text summary for copy-to-clipboard.
+    const summary = sections
+      ? `${sections.opening}\n\n${sections.patterns}\n\n${sections.wins}\n\n${sections.closing}`
+      : cleaned;
+
+    return NextResponse.json({ summary, sections });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "unknown" },

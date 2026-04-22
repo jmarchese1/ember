@@ -9,6 +9,7 @@ import {
   Trash2,
   Check,
   Sparkles,
+  Info,
 } from "lucide-react";
 import type {
   AnyEntry,
@@ -136,7 +137,9 @@ export function ParsePreview({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Intensity</Label>
+                <Label help="AI inferred this from words like 'gassed', 'easy', 'brutal', 'light'. Nudge it if it missed.">
+                  Intensity
+                </Label>
                 <PillGroup
                   options={INTENSITIES}
                   value={workout.intensity}
@@ -152,7 +155,9 @@ export function ParsePreview({
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <Label>Movements</Label>
+                <Label help="Rows the AI pulled from your text. Missing lift? Add a row. Wrong weight? Edit it.">
+                  Movements
+                </Label>
                 <button
                   className="text-[11px] flex items-center gap-1 text-accent hover:underline"
                   onClick={() =>
@@ -215,7 +220,9 @@ export function ParsePreview({
               onChange={(v) => setJournal({ ...journal, title: v })}
             />
             <div>
-              <Label>Mood</Label>
+              <Label help="AI picked this from emotional words in your entry (e.g. 'heavy', 'peaceful', 'on fire'). Trust your gut — change it if it feels off.">
+                Mood
+              </Label>
               <PillGroup
                 options={MOODS}
                 value={journal.mood}
@@ -245,7 +252,9 @@ export function ParsePreview({
         {diet && (
           <Section icon={<Salad size={14} />} title="Diet">
             <div>
-              <Label>Quality</Label>
+              <Label help="AI judged this from food mix + portions (e.g. whole foods, balance, skipped meals). Your body knows better — override if so.">
+                Quality
+              </Label>
               <PillGroup
                 options={QUALITIES}
                 value={diet.quality}
@@ -305,10 +314,41 @@ function Section({
   );
 }
 
-function Label({ children }: { children: React.ReactNode }) {
+function Label({
+  children,
+  help,
+}: {
+  children: React.ReactNode;
+  help?: string;
+}) {
   return (
-    <div className="text-[10px] uppercase tracking-widest text-tertiary mb-1.5">
-      {children}
+    <div className="flex items-center gap-1.5 mb-1.5">
+      <span className="text-[10px] uppercase tracking-widest text-tertiary">
+        {children}
+      </span>
+      {help && (
+        <span
+          className="relative group inline-flex"
+          tabIndex={0}
+          aria-label={help}
+        >
+          <Info
+            size={11}
+            className="text-tertiary hover:text-accent cursor-help"
+          />
+          <span
+            className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 w-56 px-2.5 py-1.5 rounded-md text-[11px] leading-snug text-left normal-case tracking-normal opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-20"
+            style={{
+              background: "var(--bg-inset)",
+              color: "var(--text-primary)",
+              boxShadow: "var(--shadow-md)",
+              border: "1px solid var(--border-soft)",
+            }}
+          >
+            {help}
+          </span>
+        </span>
+      )}
     </div>
   );
 }

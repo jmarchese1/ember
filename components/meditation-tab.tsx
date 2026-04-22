@@ -8,6 +8,7 @@ import {
   VolumeX,
   ChevronDown,
   Check,
+  Sparkles,
 } from "lucide-react";
 import {
   Area,
@@ -257,9 +258,14 @@ function SetupCard({
 }) {
   const [soundOpen, setSoundOpen] = useState(false);
   const [preview, setPreview] = useState<AmbientPlayer | null>(null);
+  const [teasingSound, setTeasingSound] = useState<MeditationSound | null>(null);
+  const teaseTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    return () => preview?.stop();
+    return () => {
+      preview?.stop();
+      if (teaseTimerRef.current) window.clearTimeout(teaseTimerRef.current);
+    };
   }, [preview]);
 
   async function previewSound(s: MeditationSound) {
@@ -274,8 +280,30 @@ function SetupCard({
     await p.play(s);
   }
 
+  async function teaseLockedSound(s: MeditationSound) {
+    let p = preview;
+    if (!p) {
+      p = new AmbientPlayer();
+      setPreview(p);
+    }
+    await p.unlock();
+    p.setVolume(volume);
+    await p.play(s);
+    setTeasingSound(s);
+    if (teaseTimerRef.current) window.clearTimeout(teaseTimerRef.current);
+    teaseTimerRef.current = window.setTimeout(() => {
+      p?.stop();
+      setTeasingSound(null);
+    }, 3000);
+  }
+
   function stopPreview() {
     preview?.stop();
+    if (teaseTimerRef.current) {
+      window.clearTimeout(teaseTimerRef.current);
+      teaseTimerRef.current = null;
+    }
+    setTeasingSound(null);
   }
 
   const canStart = minMin >= 1 && maxMin >= minMin && maxMin <= 60;
@@ -342,8 +370,8 @@ function SetupCard({
                     onMouseDown={(e) => {
                       e.preventDefault();
                       if (locked) {
-                        setSoundOpen(false);
-                        onUpgrade?.();
+                        // Seduce, don't wall: play a 3-second taste first.
+                        void teaseLockedSound(s);
                         return;
                       }
                       previewSound(s);
@@ -352,7 +380,7 @@ function SetupCard({
                     className="w-full text-left px-3 py-2 rounded-lg hover:opacity-90 flex items-start justify-between gap-3"
                     style={{
                       background: active ? "var(--accent-soft)" : "transparent",
-                      opacity: locked ? 0.65 : 1,
+                      opacity: locked ? 0.85 : 1,
                     }}
                   >
                     <div className="min-w-0">
@@ -386,6 +414,52 @@ function SetupCard({
         <p className="text-[11px] text-tertiary mt-2">
           {SOUND_META[sound].desc}
         </p>
+        {tier === "free" && (
+          <p className="text-[10.5px] text-tertiary mt-1.5 italic">
+            Tap a Pro sound to hear a 3-second taste.
+          </p>
+        )}
+        {teasingSound && (
+          <div
+            className="mt-3 rounded-xl border p-3 flex items-center gap-3 fade-in"
+            style={{
+              background: "var(--accent-soft)",
+              borderColor: "var(--accent)",
+            }}
+          >
+            <div
+              className="w-8 h-8 rounded-full grid place-items-center shrink-0"
+              style={{
+                background:
+                  "linear-gradient(135deg, var(--accent), var(--accent-hover))",
+              }}
+            >
+              <Volume2 size={14} color="#fff" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div
+                className="text-[12px] font-semibold"
+                style={{ color: "var(--accent-hover)" }}
+              >
+                Previewing {SOUND_META[teasingSound].label}…
+              </div>
+              <div className="text-[11px] text-secondary">
+                The full library is yours on Pro — 7 days free.
+              </div>
+            </div>
+            <Button
+              onClick={() => {
+                stopPreview();
+                setSoundOpen(false);
+                onUpgrade?.();
+              }}
+              className="!py-1.5 !px-3 !text-[12px] shrink-0"
+              icon={<Sparkles size={12} />}
+            >
+              Unlock
+            </Button>
+          </div>
+        )}
       </div>
 
       <VolumeSlider volume={volume} setVolume={setVolume} />

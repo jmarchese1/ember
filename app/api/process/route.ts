@@ -333,6 +333,7 @@ export async function POST(req: Request) {
 
     // Free-tier rate limit: 3 AI parses per day. Pro is unlimited.
     const tier = await getUserTier(user.id);
+    let aiUsage: { used: number; limit: number } | null = null;
     if (tier !== "pro") {
       const budget = await consumeFreeAiBudget(user.id);
       if (!budget.ok) {
@@ -342,10 +343,12 @@ export async function POST(req: Request) {
             reason: "free_limit",
             message: `You've used your ${budget.limit} free AI parses today. Upgrade to Pro for unlimited.`,
             limit: budget.limit,
+            aiUsage: { used: budget.used, limit: budget.limit },
           },
           { status: 402 }
         );
       }
+      aiUsage = { used: budget.used, limit: budget.limit };
     }
 
     const results: Record<string, unknown> = {};
@@ -383,7 +386,7 @@ export async function POST(req: Request) {
 
     const message = await encourage(name, results);
 
-    return NextResponse.json({ entries: results, message, date });
+    return NextResponse.json({ entries: results, message, date, aiUsage });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "unknown" },

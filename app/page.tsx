@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { Home, Dumbbell, BookOpen, Salad, LayoutDashboard, Brain, Users } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
@@ -61,6 +61,19 @@ export default function Page() {
   const [streakOpen, setStreakOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [tier, setTier] = useState<"free" | "pro">("free");
+  const [justOnboarded, setJustOnboarded] = useState(false);
+  const navRef = useRef<HTMLElement | null>(null);
+
+  // Keep the active tab button horizontally centered on mobile.
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const btn = nav.querySelector<HTMLButtonElement>("button.tab.active");
+    if (!btn) return;
+    const { offsetLeft, offsetWidth } = btn;
+    const target = offsetLeft - nav.clientWidth / 2 + offsetWidth / 2;
+    nav.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+  }, [tab]);
 
   useEffect(() => {
     setMounted(true);
@@ -187,7 +200,11 @@ export default function Page() {
       />
 
       <div className="max-w-6xl mx-auto px-4 md:px-6">
-        <nav className="py-4 flex items-center gap-1 overflow-x-auto scrollbar-thin">
+        <nav
+          ref={navRef}
+          className="py-4 flex items-center gap-1 overflow-x-auto scrollbar-thin scroll-smooth"
+          style={{ scrollBehavior: "smooth" }}
+        >
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -208,6 +225,9 @@ export default function Page() {
               onLogged={handleLogged}
               refreshKey={refreshKey}
               onUpgrade={() => setUpgradeOpen(true)}
+              tier={tier}
+              justOnboarded={justOnboarded}
+              onOnboardingHintDismissed={() => setJustOnboarded(false)}
             />
           )}
           {tab === "training" && <TrainingTab streaks={streaks} refreshKey={refreshKey} />}
@@ -248,6 +268,8 @@ export default function Page() {
         <Onboarding
           onDone={() => {
             setSettingsState(getSettings());
+            setJustOnboarded(true);
+            setTab("log");
           }}
         />
       )}

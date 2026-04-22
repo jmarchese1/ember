@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dumbbell, BookOpen, Salad, Sparkles, CheckCircle2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Confetti } from "./ui/confetti";
@@ -13,6 +13,7 @@ import type { Settings, Streaks, AnyEntry, WorkoutEntry, JournalEntry, DietEntry
 import { StreakFlame } from "./streak-flame";
 import { WeekRibbon } from "./week-ribbon";
 import { ParsePreview } from "./parse-preview";
+import { MilestoneBanner } from "./milestone-banner";
 
 export function LogTab({
   settings,
@@ -20,20 +21,32 @@ export function LogTab({
   onLogged,
   refreshKey,
   onUpgrade,
+  tier = "free",
+  justOnboarded = false,
+  onOnboardingHintDismissed,
 }: {
   settings: Settings;
   streaks: Streaks;
   onLogged: () => void;
   refreshKey: number;
   onUpgrade?: () => void;
+  tier?: "free" | "pro";
+  justOnboarded?: boolean;
+  onOnboardingHintDismissed?: () => void;
 }) {
   const date = todayISO();
   const [workout, setWorkout] = useState("");
   const [journal, setJournal] = useState("");
   const [diet, setDiet] = useState("");
   const [loading, setLoading] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   const [confetti, setConfetti] = useState(0);
+  const [milestone, setMilestone] = useState<number | null>(null);
   const [pulseKinds, setPulseKinds] = useState<Set<string>>(new Set());
+  const [aiUsage, setAiUsage] = useState<{ used: number; limit: number } | null>(null);
+  const [softLimitHinted, setSoftLimitHinted] = useState(false);
+  const [showFirstHint, setShowFirstHint] = useState(false);
+  const firstInputRef = useRef<HTMLTextAreaElement | null>(null);
   const [preview, setPreview] = useState<{
     workout?: WorkoutEntry;
     journal?: JournalEntry;
@@ -42,6 +55,52 @@ export function LogTab({
   } | null>(null);
   const today = getDayLog(date);
   const todayQuote = getDailyQuote(date);
+
+  // Right after onboarding, draw the user straight into the Training input.
+  useEffect(() => {
+    if (!justOnboarded) return;
+    setShowFirstHint(true);
+    const focusT = window.setTimeout(() => {
+      firstInputRef.current?.focus({ preventScroll: false });
+    }, 400);
+    const hideT = window.setTimeout(() => {
+      setShowFirstHint(false);
+      onOnboardingHintDismissed?.();
+    }, 10000);
+    return () => {
+      window.clearTimeout(focusT);
+      window.clearTimeout(hideT);
+    };
+  }, [justOnboarded, onOnboardingHintDismissed]);
+
+  // Initial fetch of today's AI budget usage so the ring is populated on mount
+  // even if the user hasn't called /api/process yet this session.
+  useEffect(() => {
+    if (tier === "pro") {
+      setAiUsage(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: sess } = await supabase().auth.getSession();
+        const token = sess.session?.access_token;
+        if (!token) return;
+        const res = await fetch("/api/usage", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (typeof data?.used === "number" && typeof data?.limit === "number") {
+          setAiUsage({ used: data.used, limit: data.limit });
+        }
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tier, refreshKey]);
 
   async function process() {
     const inputs: { kind: "workout" | "journal" | "diet"; text: string }[] = [];
@@ -69,6 +128,9 @@ export function LogTab({
         body: JSON.stringify({ inputs, date, name: settings.name }),
       });
       const data = await res.json();
+      if (data?.aiUsage) {
+        setAiUsage({ used: data.aiUsage.used, limit: data.aiUsage.limit });
+      }
       if (res.status === 402 && data?.reason === "free_limit") {
         toast(data.message || "Daily free limit reached.", "Upgrade");
         onUpgrade?.();
@@ -82,6 +144,22 @@ export function LogTab({
           diet: data.entries.diet,
           message: data.message,
         });
+        // Soft upsell: when user has one free parse remaining, whisper about Pro.
+        if (
+          tier !== "pro" &&
+          data.aiUsage &&
+          data.aiUsage.used === data.aiUsage.limit - 1 &&
+          !softLimitHinted
+        ) {
+          setSoftLimitHinted(true);
+          setTimeout(() => {
+            toast(
+              `1 free parse left today — Pro is unlimited.`,
+              "See Pro",
+              "default"
+            );
+          }, 1200);
+        }
       } else {
         toast(data.error || "Something went wrong.", undefined, "default");
       }
@@ -107,6 +185,8 @@ export function LogTab({
     }
     setPulseKinds(saved);
     setTimeout(() => setPulseKinds(new Set()), 2000);
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 1400);
 
     if (saved.has("workout")) setWorkout("");
     if (saved.has("journal")) setJournal("");
@@ -124,6 +204,7 @@ export function LogTab({
     const newLongest = longest + 1;
     if ([7, 14, 30, 60, 90, 100, 180, 365].includes(newLongest)) {
       setConfetti((c) => c + 1);
+      setMilestone(newLongest);
     }
     setPreview(null);
     onLogged();
@@ -192,7 +273,8 @@ export function LogTab({
           value={workout}
           setValue={setWorkout}
           logged={!!today.workout}
-          pulse={pulseKinds.has("workout")}
+          pulse={pulseKinds.has("workout") || showFirstHint}
+          inputRef={firstInputRef}
         />
         <InputCard
           icon={<BookOpen size={16} />}
@@ -214,6 +296,23 @@ export function LogTab({
         />
       </div>
 
+      {showFirstHint && (
+        <div
+          className="rounded-xl border px-4 py-3 text-[13px] text-secondary fade-in flex items-center gap-3"
+          style={{
+            background: "var(--accent-soft)",
+            borderColor: "var(--accent)",
+            borderStyle: "dashed",
+          }}
+        >
+          <Sparkles size={14} className="text-accent shrink-0" />
+          <span>
+            Write anything — like you're texting a friend. One line works. The AI
+            handles the rest.
+          </span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="text-xs text-tertiary">
           {longest > 0 ? (
@@ -227,16 +326,28 @@ export function LogTab({
             "Fresh start. Your first log writes the foundation."
           )}
         </div>
-        <Button
-          onClick={process}
-          disabled={loading || (!workout.trim() && !journal.trim() && !diet.trim())}
-          icon={loading ? null : <Sparkles size={15} />}
-        >
-          {loading ? "Shaping…" : "Process & Log"}
-        </Button>
+        <div className="flex items-center gap-3">
+          {tier !== "pro" && aiUsage && (
+            <UsageIndicator
+              used={aiUsage.used}
+              limit={aiUsage.limit}
+              onUpgrade={onUpgrade}
+            />
+          )}
+          <Button
+            onClick={process}
+            disabled={!workout.trim() && !journal.trim() && !diet.trim()}
+            loading={loading}
+            icon={justSaved ? <CheckCircle2 size={15} /> : <Sparkles size={15} />}
+          >
+            {loading ? "Shaping…" : justSaved ? "Sealed" : "Process & Log"}
+          </Button>
+        </div>
       </div>
 
       <Confetti fire={confetti} />
+
+      <MilestoneBanner milestone={milestone} onClose={() => setMilestone(null)} />
 
       {preview && (
         <ParsePreview
@@ -261,6 +372,7 @@ function InputCard({
   setValue,
   logged,
   pulse,
+  inputRef,
 }: {
   icon: React.ReactNode;
   title: string;
@@ -269,6 +381,7 @@ function InputCard({
   setValue: (v: string) => void;
   logged: boolean;
   pulse: boolean;
+  inputRef?: React.Ref<HTMLTextAreaElement>;
 }) {
   return (
     <div
@@ -289,6 +402,7 @@ function InputCard({
         )}
       </div>
       <textarea
+        ref={inputRef}
         className="textarea scrollbar-thin"
         rows={6}
         placeholder={hint}
@@ -326,6 +440,85 @@ function StatPill({
         {suffix && <span className="text-[11px] text-tertiary leading-none">{suffix}</span>}
       </div>
     </div>
+  );
+}
+
+function UsageIndicator({
+  used,
+  limit,
+  onUpgrade,
+}: {
+  used: number;
+  limit: number;
+  onUpgrade?: () => void;
+}) {
+  const clamped = Math.min(used, limit);
+  const pct = limit > 0 ? clamped / limit : 0;
+  const size = 34;
+  const stroke = 3.5;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const offset = c * (1 - pct);
+  const atLimit = used >= limit;
+  const lastSlot = used === limit - 1;
+  const label = atLimit
+    ? "Daily limit · Pro is unlimited"
+    : lastSlot
+    ? `${limit - used} parse left today`
+    : `${used}/${limit} free parses today`;
+  const color = atLimit
+    ? "var(--accent-hover)"
+    : lastSlot
+    ? "var(--accent)"
+    : "var(--text-tertiary)";
+
+  return (
+    <button
+      type="button"
+      onClick={onUpgrade}
+      title={label}
+      className="group inline-flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-subtle transition-colors"
+      aria-label={label}
+    >
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="var(--border-soft)"
+          strokeWidth={stroke}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          style={{ transition: "stroke-dashoffset 0.5s ease, stroke 0.3s" }}
+        />
+        <text
+          x="50%"
+          y="52%"
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontSize="10.5"
+          fontWeight="600"
+          fill="var(--text-primary)"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          {used}/{limit}
+        </text>
+      </svg>
+      <span className="hidden sm:inline text-[11px] text-tertiary group-hover:text-primary">
+        {atLimit ? "Upgrade" : lastSlot ? "1 left" : "today"}
+      </span>
+    </button>
   );
 }
 

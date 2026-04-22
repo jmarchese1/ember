@@ -9,6 +9,7 @@ import {
   Globe,
   Lock,
   Clock,
+  Heart,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase-client";
 import {
@@ -28,6 +29,8 @@ import { Button } from "./ui/button";
 import { toast } from "./ui/toast";
 import { EmptyState } from "./empty-state";
 
+const EXPLAINER_KEY = "ember.community.explainerSeen";
+
 export function CommunityTab({ refreshKey }: { refreshKey: number }) {
   const [userId, setUserId] = useState<string | null>(null);
   const [myProfile, setMyProfile] = useState<PublicProfile | null>(null);
@@ -35,6 +38,18 @@ export function CommunityTab({ refreshKey }: { refreshKey: number }) {
   const [friendships, setFriendships] = useState<Friendship[]>([]);
   const [loading, setLoading] = useState(true);
   const [bumpKey, setBumpKey] = useState(0);
+  const [themeFilter, setThemeFilter] = useState<string | null>(null);
+  const [explainerOpen, setExplainerOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(EXPLAINER_KEY) !== "1";
+  });
+
+  function dismissExplainer() {
+    setExplainerOpen(false);
+    try {
+      window.localStorage.setItem(EXPLAINER_KEY, "1");
+    } catch {}
+  }
 
   const refresh = useCallback(async () => {
     try {
@@ -150,8 +165,83 @@ export function CommunityTab({ refreshKey }: { refreshKey: number }) {
     );
   }
 
+  const discoverableCount = others.length;
+
   return (
     <div className="space-y-6 rise">
+      {/* First-visit explainer */}
+      {explainerOpen && (
+        <div
+          className="rounded-2xl p-5 md:p-6 border relative fade-in"
+          style={{
+            background:
+              "linear-gradient(135deg, var(--bg-card) 0%, var(--bg-card) 55%, var(--accent-soft) 180%)",
+            borderColor: "var(--border-soft)",
+          }}
+        >
+          <button
+            onClick={dismissExplainer}
+            className="absolute top-3 right-3 text-tertiary hover:text-primary"
+            aria-label="Dismiss"
+          >
+            <X size={14} />
+          </button>
+          <div className="flex items-start gap-4">
+            <div
+              className="w-10 h-10 rounded-xl grid place-items-center shrink-0"
+              style={{
+                background:
+                  "linear-gradient(135deg, var(--accent), var(--accent-hover))",
+              }}
+            >
+              <Heart size={18} color="#fff" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="display text-primary text-xl tracking-tight">
+                Small fires, better together
+              </h2>
+              <p className="text-[13.5px] text-secondary leading-relaxed mt-1.5 max-w-xl">
+                Community surfaces people whose journal themes overlap with yours —
+                not feeds, not follows. Turn on <b>Discoverable</b>, and kindred
+                spirits appear below. Your entries stay private; only your display
+                name, bio, and top themes are shared.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-3 text-[11.5px]">
+                <span
+                  className="px-2.5 py-1 rounded-full font-medium"
+                  style={{
+                    background: "var(--bg-subtle)",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  🫥 Your entries stay private
+                </span>
+                <span
+                  className="px-2.5 py-1 rounded-full font-medium"
+                  style={{
+                    background: "var(--bg-subtle)",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  🧭 Matched by theme, not feed
+                </span>
+                {discoverableCount > 0 && (
+                  <span
+                    className="px-2.5 py-1 rounded-full font-medium"
+                    style={{
+                      background: "var(--accent-soft)",
+                      color: "var(--accent-hover)",
+                    }}
+                  >
+                    {discoverableCount} {discoverableCount === 1 ? "person" : "people"} showing up today
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Your profile */}
       <ProfileCard
         profile={myProfile}
@@ -275,6 +365,45 @@ export function CommunityTab({ refreshKey }: { refreshKey: number }) {
           </div>
         )}
 
+        {suggestions.length > 0 && myProfile?.top_themes?.length ? (
+          <div className="mb-4 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-[0.2em] text-tertiary mr-1">
+              Filter by shared theme:
+            </span>
+            <button
+              onClick={() => setThemeFilter(null)}
+              className="text-[11px] px-2.5 py-1 rounded-full capitalize transition-all"
+              style={{
+                background: themeFilter === null
+                  ? "linear-gradient(135deg, var(--accent), var(--accent-hover))"
+                  : "var(--bg-subtle)",
+                color: themeFilter === null ? "#fff" : "var(--text-secondary)",
+                border: "1px solid transparent",
+              }}
+            >
+              All
+            </button>
+            {myProfile.top_themes.slice(0, 8).map((t) => (
+              <button
+                key={t}
+                onClick={() => setThemeFilter(themeFilter === t ? null : t)}
+                className="text-[11px] px-2.5 py-1 rounded-full capitalize transition-all"
+                style={{
+                  background:
+                    themeFilter === t
+                      ? "linear-gradient(135deg, var(--accent), var(--accent-hover))"
+                      : "var(--accent-soft)",
+                  color:
+                    themeFilter === t ? "#fff" : "var(--accent-hover)",
+                  border: "1px solid transparent",
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
         {suggestions.length === 0 ? (
           <EmptyState
             icon={<Users size={20} />}
@@ -282,23 +411,40 @@ export function CommunityTab({ refreshKey }: { refreshKey: number }) {
             body="The directory is quiet. As more people turn on discoverability, kindred spirits will surface here — matched by the themes that show up in your journal."
           />
         ) : (
-          <div className="grid sm:grid-cols-2 gap-3">
-            {suggestions.slice(0, 12).map(({ profile, score, shared }) => {
-              const outgoing = pendingOutgoing.some(
-                (f) => f.recipient === profile.user_id
-              );
+          (() => {
+            const filtered = themeFilter
+              ? suggestions.filter((s) => s.shared.includes(themeFilter))
+              : suggestions;
+            if (filtered.length === 0) {
               return (
-                <SuggestionCard
-                  key={profile.user_id}
-                  profile={profile}
-                  score={score}
-                  shared={shared}
-                  requested={outgoing}
-                  onRequest={() => sendRequest(profile.user_id)}
-                />
+                <div
+                  className="text-[13px] text-tertiary italic p-5 rounded-xl text-center"
+                  style={{ background: "var(--bg-subtle)" }}
+                >
+                  No one shares <b className="not-italic">{themeFilter}</b> yet — try another theme or clear the filter.
+                </div>
               );
-            })}
-          </div>
+            }
+            return (
+              <div className="grid sm:grid-cols-2 gap-3">
+                {filtered.slice(0, 12).map(({ profile, score, shared }) => {
+                  const outgoing = pendingOutgoing.some(
+                    (f) => f.recipient === profile.user_id
+                  );
+                  return (
+                    <SuggestionCard
+                      key={profile.user_id}
+                      profile={profile}
+                      score={score}
+                      shared={shared}
+                      requested={outgoing}
+                      onRequest={() => sendRequest(profile.user_id)}
+                    />
+                  );
+                })}
+              </div>
+            );
+          })()
         )}
       </div>
 

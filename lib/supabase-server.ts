@@ -66,7 +66,25 @@ export async function getUserTier(userId: string): Promise<"free" | "pro"> {
   }
 }
 
-const FREE_DAILY_AI_LIMIT = 3;
+export const FREE_DAILY_AI_LIMIT = 3;
+
+/**
+ * Read-only count of today's free-tier AI usage. Safe for Pro users too
+ * (they simply get `limit: Infinity`-style signaling from the caller).
+ */
+export async function getFreeAiUsage(
+  userId: string
+): Promise<{ used: number; limit: number }> {
+  const sb = adminClient();
+  const day = todayISO();
+  const { data } = await sb
+    .from("ai_usage")
+    .select("count")
+    .eq("user_id", userId)
+    .eq("day", day)
+    .maybeSingle();
+  return { used: (data?.count as number) ?? 0, limit: FREE_DAILY_AI_LIMIT };
+}
 
 function todayISO(): string {
   const d = new Date();
@@ -82,7 +100,7 @@ function todayISO(): string {
  */
 export async function consumeFreeAiBudget(
   userId: string
-): Promise<{ ok: boolean; remaining: number; limit: number }> {
+): Promise<{ ok: boolean; used: number; remaining: number; limit: number }> {
   const sb = adminClient();
   const day = todayISO();
   const { data: existing } = await sb
@@ -93,13 +111,14 @@ export async function consumeFreeAiBudget(
     .maybeSingle();
   const current = (existing?.count as number) ?? 0;
   if (current >= FREE_DAILY_AI_LIMIT) {
-    return { ok: false, remaining: 0, limit: FREE_DAILY_AI_LIMIT };
+    return { ok: false, used: current, remaining: 0, limit: FREE_DAILY_AI_LIMIT };
   }
+  const next = current + 1;
   await sb
     .from("ai_usage")
     .upsert(
-      { user_id: userId, day, count: current + 1, updated_at: new Date().toISOString() },
+      { user_id: userId, day, count: next, updated_at: new Date().toISOString() },
       { onConflict: "user_id,day" }
     );
-  return { ok: true, remaining: FREE_DAILY_AI_LIMIT - (current + 1), limit: FREE_DAILY_AI_LIMIT };
+  return { ok: true, used: next, remaining: FREE_DAILY_AI_LIMIT - next, limit: FREE_DAILY_AI_LIMIT };
 }

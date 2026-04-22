@@ -14,6 +14,13 @@ import { EmptyState } from "./empty-state";
 import { DashboardIllustration } from "./empty-illustrations";
 import { toast } from "./ui/toast";
 
+type SummarySections = {
+  opening: string;
+  patterns: string;
+  wins: string;
+  closing: string;
+};
+
 export function DashboardTab({
   settings,
   streaks,
@@ -29,6 +36,7 @@ export function DashboardTab({
 }) {
   const logs = useMemo<DayLog[]>(() => getAllLogs(), [refreshKey]);
   const [summary, setSummary] = useState("");
+  const [sections, setSections] = useState<SummarySections | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -69,8 +77,18 @@ export function DashboardTab({
         onUpgrade?.();
         return;
       }
-      if (data.summary) setSummary(data.summary);
-      else toast(data.error || "Couldn't generate summary.");
+      if (data.summary) {
+        setSummary(data.summary);
+        setSections(
+          data.sections &&
+            typeof data.sections.opening === "string" &&
+            typeof data.sections.patterns === "string" &&
+            typeof data.sections.wins === "string" &&
+            typeof data.sections.closing === "string"
+            ? (data.sections as SummarySections)
+            : null
+        );
+      } else toast(data.error || "Couldn't generate summary.");
     } catch {
       toast("Couldn't reach the AI. Try again.");
     } finally {
@@ -194,7 +212,7 @@ export function DashboardTab({
             }
           />
           {summary ? (
-            <div className="text-sm text-secondary leading-relaxed whitespace-pre-line max-w-3xl">{summary}</div>
+            <SummaryDisplay summary={summary} sections={sections} />
           ) : (
             <p className="text-sm text-tertiary">
               Generate a thoughtful summary of your week. Takes a moment.
@@ -243,6 +261,72 @@ export function DashboardTab({
           <MilestoneList longest={longest} logsCount={logs.length} />
         </Card>
       </div>
+    </div>
+  );
+}
+
+function SummaryDisplay({
+  summary,
+  sections,
+}: {
+  summary: string;
+  sections: SummarySections | null;
+}) {
+  if (!sections) {
+    return (
+      <div className="text-sm text-secondary leading-relaxed whitespace-pre-line max-w-3xl">
+        {summary}
+      </div>
+    );
+  }
+  return (
+    <div className="max-w-3xl space-y-4 fade-in">
+      <p
+        className="display text-primary text-[20px] md:text-[22px] leading-snug tracking-tight"
+        style={{ letterSpacing: "-0.015em" }}
+      >
+        {sections.opening}
+      </p>
+
+      <div
+        className="rounded-xl border p-4"
+        style={{ background: "var(--bg-subtle)", borderColor: "var(--border-soft)" }}
+      >
+        <div className="text-[10px] uppercase tracking-[0.22em] text-tertiary mb-1.5">
+          Patterns
+        </div>
+        <p className="text-[14px] text-primary leading-relaxed">
+          {sections.patterns}
+        </p>
+      </div>
+
+      <div
+        className="rounded-xl p-4 border"
+        style={{
+          background: "var(--accent-soft)",
+          borderColor: "transparent",
+        }}
+      >
+        <div
+          className="text-[10px] uppercase tracking-[0.22em] mb-1.5"
+          style={{ color: "var(--accent-hover)" }}
+        >
+          Wins
+        </div>
+        <p
+          className="text-[14px] leading-relaxed"
+          style={{ color: "var(--accent-hover)" }}
+        >
+          {sections.wins}
+        </p>
+      </div>
+
+      <p
+        className="text-[14px] italic leading-relaxed text-secondary border-l-2 pl-4"
+        style={{ borderColor: "var(--accent)" }}
+      >
+        {sections.closing}
+      </p>
     </div>
   );
 }
